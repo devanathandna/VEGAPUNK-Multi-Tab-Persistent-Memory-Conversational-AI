@@ -1,0 +1,41 @@
+flowchart TD
+    Start([User Input]) --> Receive[Receive & Parse Request]
+    Receive --> Hist[Load Session History]
+    
+    Hist --> Classify{Classify Intent<br/>(LLM Key 2)}
+    
+    Classify -->|Direct Chat| ContextOnly
+    Classify -->|Complex Query| RetrievalStart
+    
+    subgraph "Retrieval Pipeline"
+        RetrievalStart((Start)) --> ParExtract[Extract Entities<br/>(LLM Key 3)]
+        RetrievalStart --> ParVector[Vector Search<br/>(ChromaDB)]
+        
+        ParExtract --> GraphQuery[Graph Traversal<br/>(NetworkX)]
+        
+        GraphQuery --> Fusion[Fusion Layer Input]
+        ParVector --> Fusion
+        
+        Fusion --> Rank[Calculate Scores:<br/>Sem + Struct + Recency]
+        Rank --> TopK[Select Top K Context]
+    end
+    
+    ContextOnly --> BuildPrompt
+    TopK --> BuildPrompt[Construct System Prompt<br/>with Retrieved Context]
+    
+    BuildPrompt --> Generate[Generate Response<br/>(LLM Key 1)]
+    
+    Generate --> Display[Return JSON to Client]
+    
+    Display --> AsyncStart((Async))
+    
+    subgraph "Knowledge Update"
+        AsyncStart --> SaveSQL[Save to SQLite DB]
+        AsyncStart --> ExtractResp[Extract Entities from Response<br/>(LLM Key 4)]
+        
+        ExtractResp --> UpdateGraph[Update Graph Nodes & Edges]
+        UpdateGraph --> SaveGraph[Persist Graph State]
+    end
+    
+    SaveSQL --> End([End])
+    SaveGraph --> End

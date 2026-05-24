@@ -1,0 +1,14 @@
+Flask==3.0.0
+flask-cors==4.0.0
+python-dotenv==1.0.0
+google-generativeai==0.3.2
+gunicorn==21.2.0
+Pillow==10.1.0
+langchain==0.3.14
+langchain-huggingface==0.1.2
+langchain-chroma==0.1.4
+chromadb==0.5.23
+sentence-transformers==3.3.1
+
+# Graph RAG dependencies
+networkx>=3.0

@@ -1,0 +1,208 @@
+VEGAPUNK TECHNICAL SPECIFICATION
+================================================================================
+Version: 1.0.0
+Date: March 12, 2026
+
+1. EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+VEGAPUNK is a next-generation AI chat system that moves beyond standard
+Retrieval-Augmented Generation (RAG). It implements a "Hybrid Memory"
+architecture that fuses:
+    1. Semantic Understanding (Vector Embeddings)
+    2. Structural Knowledge (Graph Theory)
+    3. Episodic Context (Relational History)
+
+The system is designed to provide highly contextual, grounded, and
+entity-aware responses by dynamically weighing these three memory sources
+using a custom "Fusion Layer".
+
+
+2. SYSTEM ARCHITECTURE
+--------------------------------------------------------------------------------
+The application follows a decoupled client-server model.
+
+2.1 FRONTEND (User Interface)
+    - Framework: React 18 (via Vite)
+    - Language: TypeScript
+    - Styling: Tailwind CSS + shadcn/ui components
+    - Animation: Framer Motion
+    - Key Components:
+        - MainChat.tsx: Handles the primary chat loop and scrolling logic.
+        - Sidebar.tsx: Manages session history and navigation.
+    - State Management: React Hooks (useState, useEffect, useRef).
+
+2.2 BACKEND (Core Logic)
+    - Framework: Flask (Python 3.11+)
+    - Server: Gunicorn (production) / Flask Dev Server (development)
+    - LLM: Google Gemini 2.5 Flash
+    - Database: SQLite (Relational + Graph Persistence)
+    - Vector Store: ChromaDB (Semantic Search)
+
+
+3. MEMORY SUBSYSTEMS (The "Three Brains")
+--------------------------------------------------------------------------------
+
+3.1 SEMANTIC MEMORY (Vector Store)
+    - File: backend/vector_store.py
+    - Technology: ChromaDB
+    - Embedding Model: 'sentence-transformers/all-MiniLM-L6-v2'
+    - Collection Name: 'vegapunk_conversations'
+    - Function: Stores distinct concepts and message histories as vectors.
+      Allows the system to find "conceptually similar" information even if
+      different keywords are used.
+
+3.2 STRUCTURAL MEMORY (Knowledge Graph)
+    - File: backend/graph_store.py
+    - Technology: NetworkX (In-Memory) + SQLite (Persistence)
+    - Function: Maps relationships between entities.
+    - Node Types: Concept, Entity, Document, Alias, Message
+    - Edge Types & Weights:
+        - CAUSES       (1.0) - Strongest causal link
+        - CONTAINS     (0.9) - Hierarchical inclusion
+        - MENTIONS     (0.8) - Direct reference
+        - RELATED_TO   (0.7) - General association
+        - PART_OF      (0.6) - Component relationship
+        - DERIVED_FROM (0.5) - Upstream source
+        - ALIAS_OF     (0.4) - Alternative naming
+
+3.3 EPISODIC MEMORY (Relational DB)
+    - File: backend/database.py
+    - Technology: SQLite ("vegapunk_memory.db")
+    - Function: Stores the strict chronological order of conversations and sessions.
+
+
+4. THE FUSION LAYER (Ranking Algorithm)
+--------------------------------------------------------------------------------
+File: backend/fusion_layer.py
+
+The Fusion Layer is the decision engine that decides what context is relevant.
+It calculates a `Final Score` for every piece of retrieved information using
+the following formula:
+
+    Final Score = (α * Semantic) + (β * Structural) + (γ * Recency)
+
+DEFAULT CONFIGURATION:
+    - Alpha (Semantic Weight)   = 0.4
+    - Beta (Structural Weight)  = 0.4
+    - Gamma (Recency Weight)    = 0.2
+    
+TUNABLE PARAMETERS:
+    - Expansion Hops: 1 (Depth of graph traversal from found nodes)
+    - Max Neighbors: 10 (Limit on related concepts)
+    - Recency Decay: 168 hours (7 days) - Context loses 50% value every week.
+
+
+5. AGENT DESIGN & DECISION MAKING
+--------------------------------------------------------------------------------
+File: backend/agent.py
+
+The `VegapunkAgent` orchestrates the entire response process.
+
+5.1 LOAD BALANCING (Multi-Key Strategy)
+To prevent rate-limiting on the Gemini API, the agent distributes tasks across
+four distinct API keys:
+    1. Main Key: Generates the final user response.
+    2. Classifier Key: Determines if a query needs tool use (Search vs. Chat).
+    3. User Entity Key: Extracts entities from USER messages.
+    4. Model Entity Key: Extracts entities from AI responses.
+
+5.2 GRAPH RAG WORKFLOW
+    1. User Input -> Entity Extractor identifies key terms.
+    2. Vector Search finds semantically similar nodes.
+    3. Graph Traversal expands to find neighbors (Hops=1).
+    4. Fusion Layer ranks all candidates.
+    5. Top K (10) results are fed to the LLM context window.
+
+
+6. DATABASE SCHEMA (SQLite)
+--------------------------------------------------------------------------------
+
+TABLE: conversations
+    - id (INT, PK)
+    - session_id (TEXT)
+    - role (TEXT) - 'user' or 'model'
+    - content (TEXT)
+    - timestamp (DATETIME)
+    - metadata (TEXT)
+
+TABLE: sessions
+    - session_id (TEXT, PK)
+    - title (TEXT)
+    - created_at (DATETIME)
+    - updated_at (DATETIME)
+
+TABLE: graph_nodes
+    - node_id (TEXT, PK)
+    - type (TEXT)
+    - label (TEXT)
+    - importance (REAL)
+    - metadata (TEXT)
+
+TABLE: graph_edges
+    - id (INT, PK)
+    - source (TEXT, FK)
+    - target (TEXT, FK)
+    - relation (TEXT)
+    - weight (REAL)
+
+
+7. INSTALLATION & SETUP
+--------------------------------------------------------------------------------
+
+7.1 PREREQUISITES
+    - Python 3.10 or higher
+    - Node.js 18 or higher
+    - Google Gemini API Keys (recommended: 4 distinct keys)
+
+7.2 BACKEND SETUP
+    1. Navigate to backend:
+       cd backend
+       
+    2. Install Python dependencies:
+       pip install -r requirements.txt
+       
+    3. Create .env file:
+       (See section 8 for content)
+       
+    4. Run the server:
+       python app.py
+
+7.3 FRONTEND SETUP
+    1. Navigate to root:
+       cd ../
+       
+    2. Install Node dependencies:
+       npm install
+       
+    3. Run development server:
+       npm run dev
+
+
+8. CONFIGURATION (.env)
+--------------------------------------------------------------------------------
+Create a .env file in the `backend/` directory with the following keys:
+
+GEMINI_API_KEY_1=your_key_here_primary
+GEMINI_API_KEY_2=your_key_here_classifier
+GEMINI_API_KEY_3=your_key_here_user_extraction
+GEMINI_API_KEY_4=your_key_here_model_extraction
+PORT=5000
+DEBUG=True
+
+
+9. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+ISSUE: "429 Resource Exhausted"
+CAUSE: You are hitting the Gemini API interactions/minute limit.
+FIX: Ensure all 4 API keys in .env are unique. If using the free tier,
+     add artificial delays or upgrade to pay-as-you-go.
+
+ISSUE: "sqlite3.OperationalError: no such table"
+CAUSE: Database not initialized.
+FIX: Delete 'backend/vegapunk_memory.db' and restart the backend. The
+     `agent.py` script initializes the DB on first run.
+
+ISSUE: Frontend cannot connect to Backend
+CAUSE: CORS or Port mismatch.
+FIX: Ensure backend is running on port 5000 and frontend on port 5173/3000.
+     Check `app.py` CORS settings to ensure your frontend origin is allowed.

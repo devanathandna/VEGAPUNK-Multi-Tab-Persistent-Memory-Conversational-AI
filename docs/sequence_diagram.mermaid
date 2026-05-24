@@ -1,0 +1,52 @@
+sequenceDiagram
+    actor User
+    participant FE as Frontend Client
+    participant API as Flask Backend
+    participant Agent as Vegapunk Agent
+    participant Extractor as Entity Extractor
+    participant Mem as Memory (Vector + SQL)
+    participant Graph as Graph Store (NetworkX)
+    participant Fusion as Fusion Layer
+    participant LLM as Gemini Models (1 & 2)
+
+    User->>FE: Inputs Message (Text/Image)
+    FE->>API: HTTP POST /api/chat
+
+    note right of API: Request Handling
+    API->>Agent: Process Chat Request
+    Agent->>Mem: Retrieve Session History (Last N Messages)
+    Mem-->>Agent: History Array
+
+    note right of Agent: Intent Classification
+    Agent->>LLM: Classify Query (API Key 2)
+    LLM-->>Agent: Query Type (Simple/Complex/Tool)
+
+    alt Complex Query / Tool Use
+        Agent->>Extractor: Extract Entities from User Input (API Key 3)
+        Extractor-->>Agent: Entity List (People, Places, Concepts)
+        
+        par Parallel Retrieval
+            Agent->>Mem: Perform Vector Search (Cosine Sim)
+            Agent->>Graph: Query Graph Neighbors (1 Hop)
+        end
+        
+        Mem-->>Agent: Semantic Matches
+        Graph-->>Agent: Structural Matches
+
+        Agent->>Fusion: Rank & Fuse Context
+        note right of Fusion: Score = (α*Semantic) + (β*Structural) + (γ*Recency)
+        Fusion-->>Agent: Top-K Ranked Context Chunks
+    end
+
+    Agent->>LLM: Generate Final Response (API Key 1)
+    LLM-->>Agent: Final Text Reply
+
+    par Post-Processing (Async)
+        Agent->>Extractor: Extract Entities from Model Reply (API Key 4)
+        Extractor->>Graph: Update Knowledge Graph (New Nodes/Edges)
+        Agent->>Mem: Save Conversation to History
+    end
+
+    Agent-->>API: JSON Response {reply, sources}
+    API-->>FE: HTTP 200 OK
+    FE-->>User: Display Response

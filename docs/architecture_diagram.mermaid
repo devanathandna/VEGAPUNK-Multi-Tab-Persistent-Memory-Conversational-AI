@@ -1,0 +1,41 @@
+graph TD
+    subgraph Client
+        Browser[Web Browser / React] 
+    end
+
+    subgraph "Backend Infrastructure"
+        API[Flask API Server]
+        Agent[Orchestrator Agent]
+        Fusion[Fusion Layer]
+        
+        subgraph "Memory Systems"
+            VS[(Vector Store<br/>ChromaDB)]
+            GS[(Graph Store<br/>NetworkX + SQLite)]
+            RS[(Relational DB<br/>SQLite)]
+        end
+        
+        subgraph "AI Models (Gemini)"
+            Key1[Main Generating Model]
+            Key2[Query Classifier]
+            Key3[User Entity Extractor]
+            Key4[Model Entity Extractor]
+        end
+    end
+
+    Browser -- "HTTP POST (JSON)" --> API
+    API -- "Request Handling" --> Agent
+    
+    Agent -- "Routing / Intent" --> Key2
+    Agent -- "Extract Entities" --> Key3
+    Agent -- "Extract Structure" --> Key4
+    Agent -- "Generate Response" --> Key1
+    
+    Agent -- "Context Assembly" --> Fusion
+    
+    Fusion -- "Semantic Search" --> VS
+    Fusion -- "Structural Query" --> GS
+    Fusion -- "Episodic History" --> RS
+    
+    VS -.->|Embeddings| Agent
+    GS -.->|Relationships| Agent
+    RS -.->|Session Data| Agent
