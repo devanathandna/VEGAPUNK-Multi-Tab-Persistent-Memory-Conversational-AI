@@ -51,7 +51,7 @@ Rather than relying on a single retrieval strategy, VEGAPUNK fuses three distinc
 ## 🏗️ System Architecture
 
 <div align="center">
-  <img src="Images/Architecture.jpeg" alt="VEGAPUNK System Architecture" width="90%" style="border-radius: 12px; border: 1px solid #30363d;" />
+  <img src="Images/Architecture.png" alt="VEGAPUNK System Architecture" width="90%" style="border-radius: 12px; border: 1px solid #30363d;" />
   <p><em>Full Architecture — Lifecycle of a Request through VEGAPUNK's Hybrid Memory System</em></p>
 </div>
 
