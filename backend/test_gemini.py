@@ -11,8 +11,7 @@ def main():
 
     # --- Configuration ---
     api_key = os.getenv("GEMINI_API_KEY")
-    #api_key = 'AIzaSyC7sGr4OijZatfWVfm6yY8ZOjXz0W7O7jw'
-    api_key = 'AIzaSyBl3bDg7z009wutF_p5Atei1Qnp3dsZh_o'
+
     model_name = os.getenv("GEMINI_MODEL", "gemini-pro")
     model_name = 'gemini-2.5-flash'
 
